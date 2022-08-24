@@ -488,6 +488,7 @@ class UNet(DDPM):
                log_every_t=100,
                unconditional_guidance_scale=1.,
                unconditional_conditioning=None,
+               fixed_seed = True,
                # this has to come in the same format as the conditioning, # e.g. as encoded tokens, ...
                **kwargs
                ):
@@ -520,6 +521,7 @@ class UNet(DDPM):
                                                     log_every_t=log_every_t,
                                                     unconditional_guidance_scale=unconditional_guidance_scale,
                                                     unconditional_conditioning=unconditional_conditioning,
+                                                    fixed_seed=fixed_seed
                                                     )
 
         return samples
@@ -530,7 +532,8 @@ class UNet(DDPM):
                       callback=None, timesteps=None, quantize_denoised=False,
                       mask=None, x0=None, img_callback=None, log_every_t=100,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
-                      unconditional_guidance_scale=1., unconditional_conditioning=None,):
+                      unconditional_guidance_scale=1., unconditional_conditioning=None,
+                      fixed_seed = True):
         device = self.betas.device
         b = shape[0]
         if x_T is None:
@@ -542,7 +545,8 @@ class UNet(DDPM):
             for _ in range(b):
                 torch.manual_seed(seed)
                 tens.append(torch.randn(img_shape, device=device))
-                seed+=1
+                if not fixed_seed:
+                    seed+=1
             img = torch.cat(tens)
             del tens
         else:

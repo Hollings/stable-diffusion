@@ -35,20 +35,26 @@ ckpt = "models/ldm/stable-diffusion-v1/model.ckpt"
 device = "cuda"
 
 parser = argparse.ArgumentParser()
-
+parser.add_argument(
+    "--config",
+    type=str,
+    nargs="?",
+    default=config,
+    help="the prompt to render"
+)
+parser.add_argument(
+    "--ckpt",
+    type=str,
+    nargs="?",
+    default=ckpt,
+    help="the prompt to render"
+)
 parser.add_argument(
     "--prompt",
     type=str,
     nargs="?",
     default="a painting of a virus monster playing guitar",
     help="the prompt to render"
-)
-parser.add_argument(
-    "--outdir",
-    type=str,
-    nargs="?",
-    help="dir to write results to",
-    default="outputs/txt2img-samples"
 )
 parser.add_argument(
     "--skip_grid",
@@ -134,7 +140,7 @@ parser.add_argument(
 parser.add_argument(
     "--seed",
     type=int,
-    default=None,
+    default=42,
     help="the seed (for reproducible sampling)",
 )
 parser.add_argument(
@@ -149,13 +155,46 @@ parser.add_argument(
     choices=["full", "autocast"],
     default="autocast"
 )
-opt = parser.parse_args()
 
+parser.add_argument(
+    "--outdir",
+    type=str,
+    nargs="?",
+    help="dir to write results to",
+    default="outputs/txt2img-samples"
+)
+
+parser.add_argument(
+    "--prompt_dir",
+    type=str,
+    help="directory for this prompt's images",
+    default=None
+)
+parser.add_argument(
+    "--image_prefix",
+    type=str,
+    help="prefix for the filename",
+    default=""
+)
+parser.add_argument(
+    "--fixed_seed",
+    action='store_true',
+    help="if enabled, uses the same seed across samples ",
+)
+
+opt = parser.parse_args()
+if not opt.prompt_dir:
+    opt.prompt_dir = "".join([x for x in opt.prompt if x.isalnum() or x == " "])
+outpath = opt.outdir
+sample_path = os.path.join(outpath, opt.prompt_dir)[:255]
+
+
+ckpt = opt.ckpt
+config = opt.config
 tic = time.time()
 os.makedirs(opt.outdir, exist_ok=True)
-outpath = opt.outdir
 
-sample_path = os.path.join(outpath, "_".join(opt.prompt.split()))[:150]
+
 os.makedirs(sample_path, exist_ok=True)
 base_count = len(os.listdir(sample_path))
 grid_count = len(os.listdir(outpath)) - 1
@@ -164,7 +203,6 @@ if opt.seed == None:
     opt.seed = randint(0, 1000000)
 print("init_seed = ", opt.seed)
 seed_everything(opt.seed)
-
 
 sd = load_model_from_config(f"{ckpt}")
 li = []
@@ -222,6 +260,7 @@ if not opt.from_file:
     prompt = opt.prompt
     assert prompt is not None
     data = [batch_size * [prompt]]
+    print(prompt)
 
 else:
     print(f"reading prompts from {opt.from_file}")
@@ -256,6 +295,7 @@ with torch.no_grad():
                                 conditioning=c,
                                 batch_size=opt.n_samples,
                                 seed = opt.seed,
+                                fixed_seed = opt.fixed_seed,
                                 shape=shape,
                                 verbose=False,
                                 unconditional_guidance_scale=opt.scale,
@@ -271,7 +311,7 @@ with torch.no_grad():
                     x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
                     x_sample = 255. * rearrange(x_sample[0].cpu().numpy(), 'c h w -> h w c')
                     Image.fromarray(x_sample.astype(np.uint8)).save(
-                        os.path.join(sample_path, "seed_" + str(opt.seed) + "_" + f"{base_count:05}.png"))
+                        os.path.join(sample_path, f"{opt.image_prefix}{base_count:05}.png"))
                     opt.seed+=1
                     base_count += 1
 
