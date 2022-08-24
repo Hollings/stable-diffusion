@@ -28,6 +28,8 @@ def generate_from_prompt_file(
     print(prompts)
     if not prompt_dir:
         prompt_dir = prompts[0][:10]
+
+    # TODO - put these in a config file lol
     model_path = r"C:\Users\John\Documents\stable-diffusion\models\ldm\stable-diffusion-v1\model.ckpt"
     config = r"C:\Users\John\Documents\stable-diffusion\optimizedSD\v1-inference.yaml"
     command = fr'''python ../optimizedSD/optimized_txt2img.py 
@@ -42,8 +44,9 @@ def generate_from_prompt_file(
     --prompt_dir "{prompt_dir.replace(" ", "_")}" 
     --ckpt {model_path} 
     --config {config}'''
-
     os.system(command.replace("\n", " "))
+    # TODO - chunk this command so we can run more than 20-ish images
+    # TODO - stitch the results into a gif
 
 def generate_prompts(prompt, steps=10, filename = "./gif_prompts.txt"):
     prompts = []
@@ -56,4 +59,5 @@ def generate_gif(prompt, steps=10):
     generate_from_prompt_file("./gif_prompts.txt")
 
 # generate_prompts("My name is |n|")
-generate_gif("The number |n| on a stop sign", 10)
+
+generate_gif("a |n| year old house", 10)
